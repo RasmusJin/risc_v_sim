@@ -157,6 +157,13 @@ void decode_and_execute(uint32_t instruction) {
                         return;
                     }
                     break;
+                case 0x2: // BGT (Branch if Greater Than)
+                    if ((int32_t)registers[rs1] > (int32_t)registers[rs2]) {
+                        PC += imm;
+                        printf("BGT x%d, x%d, offset %d -> Branch taken, New PC = 0x%x\n", rs1, rs2, imm, PC);
+                        return;
+                    }
+                    break;
                 case 0x4: // BLT
                     if ((int32_t)registers[rs1] < (int32_t)registers[rs2]) {
                         PC += imm;

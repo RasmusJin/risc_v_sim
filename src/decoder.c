@@ -1,10 +1,15 @@
 #include <stdio.h>
 #include <stdint.h>
-#include "simulator.h"
-#include "decoder.h"
+#include "../include/simulator.h"
+#include "../include/memory.h"
+#include "../include/decoder.h"
 
 void decode_and_execute(uint32_t instruction) {
     uint32_t opcode = instruction & 0x7F;
+    printf("PC: 0x%x, Instruction: 0x%x\n", PC, instruction);
+    printf("Extracted opcode: 0x%x\n", opcode);
+
+    
 
     switch (opcode) {
         case 0x13: { // I-Type Instructions (e.g., ADDI, SLTI, SLTIU, XORI, ORI, ANDI)
@@ -17,8 +22,10 @@ void decode_and_execute(uint32_t instruction) {
 
             switch (funct3) {
                 case 0x0: // ADDI
+                    printf("ADDI: rd = x%d, rs1 = x%d, imm = %d\n", rd, rs1, imm);
+                    printf("Before ADDI: registers[%d] = %d, registers[%d] = %d\n", rd, registers[rd], rs1, registers[rs1]);
                     registers[rd] = registers[rs1] + imm;
-                    printf("ADDI x%d, x%d, %d -> x%d = %d\n", rd, rs1, imm, rd, registers[rd]);
+                    printf("After ADDI: registers[%d] = %d\n", rd, registers[rd]);
                     break;
                 case 0x1: // SLLI (Shift Left Logical Immediate)
                     registers[rd] = registers[rs1] << shamt;
@@ -123,6 +130,71 @@ void decode_and_execute(uint32_t instruction) {
             }
             break;
         }
+        case 0x63: { // B-Type Instructions (Branching)
+            uint32_t funct3 = (instruction >> 12) & 0x07;
+            uint32_t rs1 = (instruction >> 15) & 0x1F;
+            uint32_t rs2 = (instruction >> 20) & 0x1F;
+
+            // Calculate the 13-bit signed branch offset from the instruction fields
+            int32_t imm = ((instruction >> 31) << 12)       // sign bit
+                        | (((instruction >> 7) & 0x1) << 11)  // bit 11
+                        | (((instruction >> 25) & 0x3F) << 5) // bits 10-5
+                        | ((instruction >> 8) & 0xF) << 1;    // bits 4-1
+            imm = sign_extend(imm, 13);
+
+            switch (funct3) {
+                case 0x0: // BEQ
+                    if (registers[rs1] == registers[rs2]) {
+                        PC += imm;
+                        printf("BEQ x%d, x%d, offset %d -> PC = 0x%x\n", rs1, rs2, imm, PC);
+                        return;
+                    }
+                    break;
+                case 0x1: // BNE
+                    if (registers[rs1] != registers[rs2]) {
+                        PC += imm;
+                        printf("BNE x%d, x%d, offset %d -> PC = 0x%x\n", rs1, rs2, imm, PC);
+                        return;
+                    }
+                    break;
+                case 0x4: // BLT
+                    if ((int32_t)registers[rs1] < (int32_t)registers[rs2]) {
+                        PC += imm;
+                        printf("BLT x%d, x%d, offset %d -> PC = 0x%x\n", rs1, rs2, imm, PC);
+                        return;
+                    }
+                    break;
+                case 0x5: // BGE
+                    if ((int32_t)registers[rs1] >= (int32_t)registers[rs2]) {
+                        PC += imm;
+                        printf("BGE x%d, x%d, offset %d -> PC = 0x%x\n", rs1, rs2, imm, PC);
+                        return;
+                    }
+                    break;
+                case 0x6: // BLTU
+                    if ((uint32_t)registers[rs1] < (uint32_t)registers[rs2]) {
+                        PC += imm;
+                        printf("BLTU x%d, x%d, offset %d -> PC = 0x%x\n", rs1, rs2, imm, PC);
+                        return;
+                    }
+                    break;
+                case 0x7: // BGEU
+                    if ((uint32_t)registers[rs1] >= (uint32_t)registers[rs2]) {
+                        PC += imm;
+                        printf("BGEU x%d, x%d, offset %d -> PC = 0x%x\n", rs1, rs2, imm, PC);
+                        return;
+                    }
+                    break;
+                default:
+                    printf("Unknown B-type funct3: 0x%x\n", funct3);
+                    break;
+            }
+
+            // If branch is not taken, increment PC by 4
+            PC += 4;
+            printf("Branch not taken -> PC incremented to 0x%x\n", PC);
+            break;
+        }
 
         case 0x73: { // ECALL
             printf("ECALL encountered. Exiting simulation.\n");
@@ -136,7 +208,8 @@ void decode_and_execute(uint32_t instruction) {
 }
 
 int32_t sign_extend(int32_t imm, int bits) {
-    int32_t mask = (1 << (bits - 1));
-    return (imm ^ mask) - mask;
+    int32_t shift = 32 - bits;
+    return (imm << shift) >> shift;
 }
+
 

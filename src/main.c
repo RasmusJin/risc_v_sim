@@ -18,7 +18,10 @@ int main(int argc, char *argv[]) {
     while (PC < MEMORY_SIZE && running) {
         uint32_t instruction = fetch_instruction();
         decode_and_execute(instruction);
-        PC += 4;
+        if (running && (instruction & 0x7F) != 0x63) { // Check if not a branch instruction
+            PC += 4;
+        }
+        printf("Next PC: 0x%x\n", PC);
     }
 
     print_registers();

@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        ".fantomasignore": "ignore",
+        "*.fs": "fsharp",
+        "simulator.h": "c",
+        "decoder.h": "c"
+    }
+}

@@ -15,18 +15,13 @@ int main(int argc, char *argv[]) {
 
     printf("RISC-V Simulator Starting...\n");
 
-    while (PC < MEMORY_SIZE) {
+    while (PC < MEMORY_SIZE && running) {
         uint32_t instruction = fetch_instruction();
         decode_and_execute(instruction);
-
-        if (instruction == 0x00000073) { // ECALL
-            printf("ECALL encountered. Exiting simulation.\n");
-            break;
-        }
-
         PC += 4;
     }
 
     print_registers();
+    write_output_binary("output.bin");
     return 0;
 }

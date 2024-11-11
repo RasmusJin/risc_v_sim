@@ -37,6 +37,7 @@ void decode_and_execute(uint32_t instruction) {
         }
         case 0x73: { // ECALL
             printf("ECALL encountered. Exiting simulation.\n");
+            running = 0;
             return;
         }
         default:

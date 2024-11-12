@@ -12,6 +12,9 @@ void init_simulator() {
     }
     PC = 0;
     running = 1;
+    registers[2] = 0x100000;
+    registers[0] = 0;
+    printf("Stack Pointer (sp) initialized to 0x100000\n");
 }
 
 void print_registers() {
@@ -29,7 +32,20 @@ void write_output_binary(const char *filename) {
     }
 
     for (int i = 0; i < NUM_REGISTERS; i++) {
-        fwrite(&registers[i], sizeof(uint32_t), 1, file);
+        uint32_t value = registers[i];
+
+        // Optional: Handle endianness (uncomment if needed)
+        // value = htonl(value);
+
+        size_t written = fwrite(&value, sizeof(uint32_t), 1, file);
+        if (written != 1) {
+            perror("Error writing to output file");
+            fclose(file);
+            return;
+        }
+
+        // Debug output
+        printf("Writing x%d = 0x%x to file\n", i, value);
     }
 
     fclose(file);

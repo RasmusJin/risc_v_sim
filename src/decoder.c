@@ -12,8 +12,30 @@ void decode_and_execute(uint32_t instruction) {
     
 
     switch (opcode) {
+        case 0x03: { // Load Instructions (e.g., LW)
+            uint32_t rd = (instruction >> 7) & 0x1F;
+            uint32_t rs1 = (instruction >> 15) & 0x1F;
+            if (rd == 0) {
+                printf("Ignoring write to x0 (zero register)\n");
+                return;
+            }
+            int32_t imm = sign_extend((instruction >> 20), 12);
+            uint32_t address = registers[rs1] + imm;
+
+            if (rs1 == 2) { // Using Stack Pointer (sp)
+                printf("LW using Stack Pointer: Loading from address 0x%x\n", address);
+            }
+
+            registers[rd] = *((uint32_t *)(memory + address));
+            printf("LW x%d, %d(x%d) -> x%d = 0x%x\n", rd, imm, rs1, rd, registers[rd]);
+            break;
+        }
         case 0x13: { // I-Type Instructions (e.g., ADDI, SLTI, SLTIU, XORI, ORI, ANDI)
             uint32_t rd = (instruction >> 7) & 0x1F;
+            if (rd == 0) {
+                printf("Ignoring write to x0 (zero register)\n");
+                return;
+            }
             uint32_t rs1 = (instruction >> 15) & 0x1F;
             int32_t imm = sign_extend((instruction >> 20), 12);
             uint32_t funct3 = (instruction >> 12) & 0x07;
@@ -24,8 +46,24 @@ void decode_and_execute(uint32_t instruction) {
                 case 0x0: // ADDI
                     printf("ADDI: rd = x%d, rs1 = x%d, imm = %d\n", rd, rs1, imm);
                     printf("Before ADDI: registers[%d] = %d, registers[%d] = %d\n", rd, registers[rd], rs1, registers[rs1]);
+
+                    // Perform the addition
                     registers[rd] = registers[rs1] + imm;
-                    printf("After ADDI: registers[%d] = %d\n", rd, registers[rd]);
+
+                    // Check if the destination is the stack pointer (sp)
+                    if (rd == 2) {
+                        printf("Stack Pointer Adjustment: sp = sp + %d\n", imm);
+                        printf("After ADDI: registers[%d] (sp) = 0x%x\n", rd, registers[rd]);
+
+                        // Check for stack alignment after adjustment
+                        if (registers[2] % 16 != 0) {
+                            printf("Error: Stack pointer misaligned: 0x%x\n", registers[2]);
+                            running = 0; // Halt simulation if misaligned
+                            return;
+                        }
+                    } else {
+                        printf("After ADDI: registers[%d] = %d\n", rd, registers[rd]);
+                    }
                     break;
                 case 0x1: // SLLI (Shift Left Logical Immediate)
                     registers[rd] = registers[rs1] << shamt;
@@ -66,7 +104,53 @@ void decode_and_execute(uint32_t instruction) {
             }
             break;
         }
+        case 0x23: { // S-Type (Store) Instructions
+            uint32_t funct3 = (instruction >> 12) & 0x7;
+            uint32_t rs1 = (instruction >> 15) & 0x1F;
+            uint32_t rs2 = (instruction >> 20) & 0x1F;
+            int32_t imm = ((instruction >> 25) << 5) | ((instruction >> 7) & 0x1F);
+            imm = sign_extend(imm, 12);
+            uint32_t address = registers[rs1] + imm;
+            if (rs1 == 2) {
+                printf("Using Stack Pointer (sp) for address calculation: sp = 0x%x, offset = %d, address = 0x%x\n",
+                       registers[rs1], imm, address);
+            }
+            switch (funct3) {
+                case 0x0: // SB (Store Byte)
+                    printf("SB: Storing byte from x%d to memory[x%d + %d]\n", rs2, rs1, imm);
+                    memory[registers[rs1] + imm] = registers[rs2] & 0xFF;
+                    break;
+                case 0x1: // SH (Store Halfword)
+                    printf("SH: Storing halfword from x%d to memory[x%d + %d]\n", rs2, rs1, imm);
+                    *((uint16_t *)(memory + registers[rs1] + imm)) = registers[rs2] & 0xFFFF;
+                    break;
+                case 0x2: { // SW (Store Word)
+                    uint32_t address = registers[rs1] + imm;
+                    
+                    // Alignment check
+                    if (address % 4 != 0) {
+                        printf("Misaligned memory access: address 0x%x\n", address);
+                        running = 0;
+                        return;
+                    }
+                    
+                    // Bounds check
+                    if (address >= MEMORY_SIZE || address < 0) {
+                        printf("Error: SW memory access out of bounds: address 0x%x\n", address);
+                        running = 0;
+                        return;
+                    }
 
+                    printf("SW: Storing word from x%d (0x%x) to memory address 0x%x\n", rs2, registers[rs2], address);
+                    *((uint32_t *)(memory + address)) = registers[rs2];
+                    break;
+                }
+                default:
+                    printf("Unknown S-type funct3: 0x%x\n", funct3);
+                    break;
+            }
+            break;
+        }
         case 0x37: { // LUI (Load Upper Immediate)
             uint32_t rd = (instruction >> 7) & 0x1F;
             int32_t imm = instruction & 0xFFFFF000;
@@ -76,6 +160,10 @@ void decode_and_execute(uint32_t instruction) {
         }
         case 0x33: { // R-Type Instructions (e.g., ADD, SUB, SLT, SLTU, XOR, OR, AND)
             uint32_t rd = (instruction >> 7) & 0x1F;
+            if (rd == 0) {
+                printf("Ignoring write to x0 (zero register)\n");
+                return;
+            }
             uint32_t rs1 = (instruction >> 15) & 0x1F;
             uint32_t rs2 = (instruction >> 20) & 0x1F;
             uint32_t funct3 = (instruction >> 12) & 0x07;
@@ -202,6 +290,52 @@ void decode_and_execute(uint32_t instruction) {
             printf("Branch not taken -> PC incremented to 0x%x\n", PC);
             break;
         }
+        case 0x67: { // JALR
+            uint32_t rd = (instruction >> 7) & 0x1F;
+            uint32_t rs1 = (instruction >> 15) & 0x1F;
+            int32_t imm = sign_extend((instruction >> 20), 12);
+
+            uint32_t target_address = (registers[rs1] + imm) & ~1; // Ensure LSB is cleared for alignment
+
+            // Save the return address only if rd is not x0
+            if (rd != 0) {
+                registers[rd] = PC + 4;
+            }
+
+            PC = target_address;
+
+            // Debug output
+            printf("JALR: Jumping to 0x%x, rd (x%d) = 0x%x\n", PC, rd, registers[rd]);
+            if (PC >= MEMORY_SIZE || PC < 0) {
+                printf("Error: JALR set PC out of bounds (0x%x). Halting simulation.\n", PC);
+                running = 0;
+                return;
+            }
+            return;
+        }
+
+
+
+        case 0x6F: { // JAL
+            uint32_t rd = (instruction >> 7) & 0x1F;
+            int32_t imm = ((instruction >> 31) << 20)         // Bit 20 (sign bit)
+                        | (((instruction >> 21) & 0x3FF) << 1) // Bits 10-1
+                        | (((instruction >> 20) & 0x1) << 11)  // Bit 11
+                        | (((instruction >> 12) & 0xFF) << 12); // Bits 19-12
+            imm = sign_extend(imm, 21);
+            if (rd != 0) {
+                registers[rd] = PC + 4;
+            }
+            
+            
+            PC += imm;              // Jump to target address
+            printf("JAL x%d, offset %d -> PC = 0x%x, x%d = 0x%x\n", rd, imm, PC, rd, registers[rd]);
+            if (PC >= MEMORY_SIZE || PC < 0) {
+                printf("Error: JAL set PC out of bounds (0x%x). Halting simulation.\n", PC);
+                running = 0;
+            }
+            return;
+        }
 
         case 0x73: { // ECALL
             printf("ECALL encountered. Exiting simulation.\n");
@@ -218,5 +352,3 @@ int32_t sign_extend(int32_t imm, int bits) {
     int32_t shift = 32 - bits;
     return (imm << shift) >> shift;
 }
-
-

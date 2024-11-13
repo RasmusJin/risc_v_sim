@@ -20,7 +20,7 @@ void load_instructions(const char *filename) {
 }
 
 uint32_t fetch_instruction() {
-    if (PC >= MEMORY_SIZE || PC < 0) {
+    if (PC >= MEMORY_SIZE) {
         printf("Error: PC out of bounds (0x%x). Halting simulation.\n", PC);
         running = 0;
         return 0;

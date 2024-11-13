@@ -111,14 +111,14 @@ void decode_and_execute(uint32_t instruction) {
             }
 
             // Bounds check to prevent accessing invalid memory
-            if (address >= MEMORY_SIZE || address < 0) {
+            if (address >= MEMORY_SIZE) {
                 printf("Error: Load memory access out of bounds: address 0x%x\n", address);
                 running = 0;
             }
             break;
         }
 
-        case 0x13: { // I-Type Instructions (e.g., ADDI, SLTI, SLTIU, XORI, ORI, ANDI)
+        case 0x13: { // I-Type Instructions (ADDI, SLTI, SLTIU, XORI, ORI, ANDI)
             uint32_t rd = (instruction >> 7) & 0x1F;
             if (rd == 0) {
                 printf("Ignoring write to x0 (zero register)\n");
@@ -209,7 +209,7 @@ void decode_and_execute(uint32_t instruction) {
             }
 
             // Bounds check
-            if (address >= MEMORY_SIZE || address < 0) {
+            if (address >= MEMORY_SIZE ) {
                 printf("Error: Store memory access out of bounds: address 0x%x\n", address);
                 running = 0;
                 return;
@@ -433,7 +433,7 @@ void decode_and_execute(uint32_t instruction) {
             // Jump to target address
             PC += imm;
             printf("JAL x%d, offset %d -> PC = 0x%x, x%d = 0x%x\n", rd, imm, PC, rd, registers[rd]);
-            if (PC >= MEMORY_SIZE || PC < 0) {
+            if (PC >= MEMORY_SIZE) {
                 printf("Error: JAL set PC out of bounds (0x%x). Halting simulation.\n", PC);
                 running = 0;
             }
@@ -465,7 +465,7 @@ void decode_and_execute(uint32_t instruction) {
             // Normal JALR: Jump to target address
             PC = target_address;
             printf("JALR: Jumping to 0x%x, rd (x%d) = 0x%x\n", PC, rd, registers[rd]);
-            if (PC >= MEMORY_SIZE || PC < 0) {
+            if (PC >= MEMORY_SIZE) {
                 printf("Error: JALR set PC out of bounds (0x%x). Halting simulation.\n", PC);
                 running = 0;
                 return;

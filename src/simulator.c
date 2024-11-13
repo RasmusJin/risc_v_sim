@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "simulator.h"
+#include "decoder.h"
 
 uint32_t registers[NUM_REGISTERS] = {0};
 uint32_t PC = 0;
@@ -30,12 +31,14 @@ void write_output_binary(const char *filename) {
         perror("Error opening output file");
         return;
     }
-
+    printf("Before writing output, stack pointer (x2) = 0x%x\n", registers[2]);
     for (int i = 0; i < NUM_REGISTERS; i++) {
         uint32_t value = registers[i];
 
-        // Optional: Handle endianness (uncomment if needed)
-        // value = htonl(value);
+                // Skip writing x2 (stack pointer) if it was never used
+        if (i == 2 && !stack_pointer_used) {
+            value = 0;
+        }
 
         size_t written = fwrite(&value, sizeof(uint32_t), 1, file);
         if (written != 1) {

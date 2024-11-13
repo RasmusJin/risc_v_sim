@@ -12,7 +12,7 @@ void decode_and_execute(uint32_t instruction) {
     
 
     switch (opcode) {
-        case 0x03: { // Load Instructions (e.g., LW)
+        case 0x03: { // Load Instructions (LB, LH, LW, LBU, LHU)
             uint32_t rd = (instruction >> 7) & 0x1F;
             uint32_t rs1 = (instruction >> 15) & 0x1F;
             if (rd == 0) {
@@ -21,15 +21,65 @@ void decode_and_execute(uint32_t instruction) {
             }
             int32_t imm = sign_extend((instruction >> 20), 12);
             uint32_t address = registers[rs1] + imm;
+            uint32_t funct3 = (instruction >> 12) & 0x07;
 
-            if (rs1 == 2) { // Using Stack Pointer (sp)
-                printf("LW using Stack Pointer: Loading from address 0x%x\n", address);
+            // Check if using Stack Pointer (sp)
+            if (rs1 == 2) {
+                printf("Load using Stack Pointer: Loading from address 0x%x\n", address);
             }
 
-            registers[rd] = *((uint32_t *)(memory + address));
-            printf("LW x%d, %d(x%d) -> x%d = 0x%x\n", rd, imm, rs1, rd, registers[rd]);
+            // Alignment check for word loads
+            if ((funct3 == 0x2 || funct3 == 0x4 || funct3 == 0x5) && (address % 4 != 0)) {
+                printf("Misaligned memory access: address 0x%x\n", address);
+                running = 0;
+                return;
+            }
+
+            switch (funct3) {
+                case 0x0: { // LB (Load Byte, sign-extended)
+                    int8_t value = *((int8_t *)(memory + address));
+                    registers[rd] = (int32_t)value;
+                    printf("LB x%d, %d(x%d) -> x%d = 0x%x\n", rd, imm, rs1, rd, registers[rd]);
+                    break;
+                }
+                case 0x1: { // LH (Load Halfword, sign-extended)
+                    int16_t value = *((int16_t *)(memory + address));
+                    registers[rd] = (int32_t)value;
+                    printf("LH x%d, %d(x%d) -> x%d = 0x%x\n", rd, imm, rs1, rd, registers[rd]);
+                    break;
+                }
+                case 0x2: { // LW (Load Word)
+                    uint32_t value = *((uint32_t *)(memory + address));
+                    registers[rd] = value;
+                    printf("LW x%d, %d(x%d) -> x%d = 0x%x\n", rd, imm, rs1, rd, registers[rd]);
+                    break;
+                }
+                case 0x4: { // LBU (Load Byte Unsigned)
+                    uint8_t value = *((uint8_t *)(memory + address));
+                    registers[rd] = (uint32_t)value;
+                    printf("LBU x%d, %d(x%d) -> x%d = 0x%x\n", rd, imm, rs1, rd, registers[rd]);
+                    break;
+                }
+                case 0x5: { // LHU (Load Halfword Unsigned)
+                    uint16_t value = *((uint16_t *)(memory + address));
+                    registers[rd] = (uint32_t)value;
+                    printf("LHU x%d, %d(x%d) -> x%d = 0x%x\n", rd, imm, rs1, rd, registers[rd]);
+                    break;
+                }
+                default:
+                    printf("Unknown load funct3: 0x%x\n", funct3);
+                    running = 0;
+                    return;
+            }
+
+            // Bounds check to prevent accessing invalid memory
+            if (address >= MEMORY_SIZE || address < 0) {
+                printf("Error: Load memory access out of bounds: address 0x%x\n", address);
+                running = 0;
+            }
             break;
         }
+
         case 0x13: { // I-Type Instructions (e.g., ADDI, SLTI, SLTIU, XORI, ORI, ANDI)
             uint32_t rd = (instruction >> 7) & 0x1F;
             if (rd == 0) {
@@ -313,8 +363,6 @@ void decode_and_execute(uint32_t instruction) {
             }
             return;
         }
-
-
 
         case 0x6F: { // JAL
             uint32_t rd = (instruction >> 7) & 0x1F;

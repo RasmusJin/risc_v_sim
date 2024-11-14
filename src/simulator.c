@@ -4,17 +4,18 @@
 #include "decoder.h"
 
 uint32_t registers[NUM_REGISTERS] = {0};
-uint32_t PC = 0;
-int running = 1;
+uint32_t PC = 0; // Program Counter
+int running = 1; // Flag to stop the simulator
 
+// Initialize the simulator state
 void init_simulator() {
     for (int i = 0; i < NUM_REGISTERS; i++) {
         registers[i] = 0;
     }
     PC = 0;
     running = 1;
-    registers[2] = 0x100000;
-    registers[0] = 0;
+    registers[2] = 0x100000; // Initialize Stack Pointer (sp) to top of memory
+    registers[0] = 0; // x0 is hardcoded to zero
     printf("Stack Pointer (sp) initialized to 0x100000\n");
 }
 

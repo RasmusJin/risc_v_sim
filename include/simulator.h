@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 // Constants
-#define NUM_REGISTERS 32
+#define NUM_REGISTERS 32 // Number of registers in the RISC-V architecture
 #define MEMORY_SIZE (1024 * 1024) // 1 MB of memory
 
 extern int running;

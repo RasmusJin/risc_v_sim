@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Define test directories
 TEST_DIRS=("tests/task1" "tests/task2" "tests/task3" "tests/task4")
 
 # Initialize counters
@@ -19,7 +18,7 @@ for dir in "${TEST_DIRS[@]}"; do
         test_name=$(basename "$bin_file" .bin)
         res_file="$dir/$test_name.res"
 
-        # Run the test with your simulator
+        # Run the test with the simulator
         echo "Running test: $test_name"
         ./riscv_sim "$bin_file"
 

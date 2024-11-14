@@ -6,6 +6,7 @@
 
 int stack_pointer_used = 0;
 
+// Decode and execute a single instruction
 void decode_and_execute(uint32_t instruction) {
     uint32_t opcode = instruction & 0x7F;
     printf("PC: 0x%x, Instruction: 0x%x\n", PC, instruction);
@@ -19,9 +20,9 @@ void decode_and_execute(uint32_t instruction) {
                 printf("Ignoring write to x0 (zero register)\n");
                 return;
             }
-            int32_t imm = sign_extend((instruction >> 20), 12);
-            uint32_t address = registers[rs1] + imm;
-            uint32_t funct3 = (instruction >> 12) & 0x07;
+            int32_t imm = sign_extend((instruction >> 20), 12); // Sign-extend the 12-bit immediate value
+            uint32_t address = registers[rs1] + imm;        // Calculate the memory address
+            uint32_t funct3 = (instruction >> 12) & 0x07;   // Extract the funct3 field
 
             // Check if using Stack Pointer (sp)
             if (rs1 == 2) {

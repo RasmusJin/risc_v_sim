@@ -20,13 +20,16 @@ int main(int argc, char *argv[]) {
         printf("Current PC: 0x%x, Next Instruction: 0x%x\n", PC, instruction);
 
         decode_and_execute(instruction);
+        // Check for JAL, JALR and ECALL to prevent incrementing PC
         if (running && (instruction & 0x7F) != 0x6F && (instruction & 0x7F) != 0x67 && (instruction & 0x7F) != 0x63) {
             PC += 4;
         }
         printf("Next PC: 0x%x\n", PC);
     }
 
+    // Print the register state before the file write for debugging
     print_registers();
+    //write the file
     write_output_binary("output.bin");
     return 0;
 }
